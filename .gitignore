@@ -1,0 +1,30 @@
+# Ignore the virtual environment
+venv/
+
+# Python related
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.log
+
+# FastAPI dependencies
+backend/.env
+backend/.pytest_cache/
+
+# Node.js dependencies (Frontend)
+frontend/node_modules/
+frontend/.parcel-cache/
+frontend/.next/
+frontend/build/
+frontend/dist/
+
+# Crossbar-related
+crossbar/.crossbar/
+
+# System & Editor files
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
