@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+alembic
+python-dotenv
+autobahn
+bcrypt
+passlib
+dotenv
+bcrypt
+crossbar
+python-jose[cryptography]

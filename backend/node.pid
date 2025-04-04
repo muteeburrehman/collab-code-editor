@@ -1,0 +1,22 @@
+{
+    "pid": 7028, 
+    "argv": [
+        "crossbar", 
+        "start", 
+        "--config", 
+        "config.json"
+    ], 
+    "options": {
+        "debug_lifecycle": false, 
+        "debug_programflow": false, 
+        "command": "start", 
+        "color": "auto", 
+        "loglevel": "info", 
+        "logformat": "standard", 
+        "logdir": null, 
+        "logtofile": false, 
+        "cbdir": "/home/muteeb/Downloads/collab-code-editor/backend", 
+        "config": "config.json", 
+        "shutdownafter": null
+    }
+}
