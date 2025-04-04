@@ -9,12 +9,14 @@ app = FastAPI(title="Code Sharing API")
 
 
 # Configure CORS
+origins = ["http://localhost:3000"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Update this with your frontend URL
+    allow_origins=origins,  # Don't use "*" here with credentials
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 app.include_router(user.router)
 app.include_router(document.router)

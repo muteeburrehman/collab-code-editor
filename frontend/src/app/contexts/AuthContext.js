@@ -30,22 +30,24 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', authToken)
   }
 
-  const logout = () => {
-    setUser(null)
-    setToken(null)
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
-  }
+// Enhanced logout function for AuthContext.js
+const logout = () => {
+  setUser(null)
+  setToken(null)
+  localStorage.removeItem('user')
+  localStorage.removeItem('token')
+
+  // Clear any other potential stored data
+  sessionStorage.clear() // Clear session storage too if you're using it
+
+  // You could also add this if needed
+  window.location.href = '/login' // Force a full page reload to clear any in-memory state
+}
+  // Add this computed property
+  const isAuthenticated = !!user && !!token
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      token,
-      isAuthenticated: !!user,
-      login,
-      logout,
-      loading
-    }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   )

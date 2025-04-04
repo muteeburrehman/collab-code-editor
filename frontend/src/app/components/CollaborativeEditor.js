@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import autobahn from 'autobahn-browser'
 
-
 // Import CodeMirror v6 modules
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars } from '@codemirror/view'
@@ -23,6 +22,8 @@ import { rust } from '@codemirror/lang-rust'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 const CollaborativeEditor = ({
   documentId,
   initialContent = '',
@@ -40,9 +41,15 @@ const CollaborativeEditor = ({
   const editorContentRef = useRef(initialContent)
   const [isConnected, setIsConnected] = useState(false)
   const [isApplyingRemoteChanges, setIsApplyingRemoteChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const cursorMarkers = useRef({})
   // Add ref to store subscription objects
   const subscriptions = useRef([])
+  // Add state to keep track of when content was last saved
+  const lastSaved = useRef(Date.now())
+  const hasPendingChanges = useRef(false)
+  const saveTimeoutRef = useRef(null)
+  const activeUsers = useRef(new Set())
 
   // Map language to CodeMirror language support
   const getLanguageSupport = (lang) => {
@@ -63,6 +70,103 @@ const CollaborativeEditor = ({
     }
     return langMap[lang.toLowerCase()] || javascript()
   }
+
+  // Fetch the latest document content from server
+  const fetchDocumentContent = async () => {
+    try {
+      const response = await fetch(`${API_URL}/documents/${documentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const document = await response.json();
+        setIsApplyingRemoteChanges(true);
+        try {
+          if (editorView.current) {
+            const transaction = editorView.current.state.update({
+              changes: {
+                from: 0,
+                to: editorView.current.state.doc.length,
+                insert: document.content || ""
+              }
+            });
+            editorView.current.dispatch(transaction);
+            editorContentRef.current = document.content || "";
+            hasPendingChanges.current = false;
+          }
+        } finally {
+          setIsApplyingRemoteChanges(false);
+        }
+      } else {
+        console.log('Failed to fetch document:', await response.text());
+      }
+    } catch (error) {
+      console.log('Error fetching document:', error);
+    }
+  };
+
+  // Force immediate save
+  const forceSave = async () => {
+    if (hasPendingChanges.current) {
+      await saveDocumentToServer();
+      return true;
+    }
+    return false;
+  };
+
+  // Save document content to server
+  const saveDocumentToServer = async () => {
+    if (!hasPendingChanges.current) return;
+
+    // Clear any pending save timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${API_URL}/documents/${documentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          content: editorContentRef.current
+        })
+      });
+
+      if (response.ok) {
+        lastSaved.current = Date.now();
+        hasPendingChanges.current = false;
+        console.log('Document saved successfully');
+      } else {
+        console.log('Failed to save document:', await response.text());
+        // Schedule retry
+        saveTimeoutRef.current = setTimeout(saveDocumentToServer, 5000);
+      }
+    } catch (error) {
+      console.log('Error saving document:', error);
+      // Schedule retry
+      saveTimeoutRef.current = setTimeout(saveDocumentToServer, 5000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Debounced save function
+  const debouncedSave = () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDocumentToServer();
+    }, 1000); // 1 second delay
+  };
 
   // Initialize CodeMirror
   useEffect(() => {
@@ -92,8 +196,15 @@ const CollaborativeEditor = ({
         getLanguageSupport(language),
         EditorView.updateListener.of(update => {
           if (update.docChanged && !isApplyingRemoteChanges) {
-            editorContentRef.current = update.state.doc.toString()
-            handleEditorChanges(update)
+            const newContent = update.state.doc.toString();
+            // Only mark as changed if content actually changed
+            if (newContent !== editorContentRef.current) {
+              editorContentRef.current = newContent;
+              hasPendingChanges.current = true;
+              handleEditorChanges(update);
+              // Trigger debounced save
+              debouncedSave();
+            }
           }
         }),
         EditorView.theme({
@@ -101,68 +212,96 @@ const CollaborativeEditor = ({
           ".cm-scroller": { overflow: "auto" }
         })
       ]
-    })
+    });
 
     // Create the editor view
     editorView.current = new EditorView({
       state: startState,
       parent: editorRef.current
-    })
+    });
 
     // Focus the editor
     setTimeout(() => {
-      editorView.current.focus()
-    }, 100)
+      editorView.current.focus();
+    }, 100);
 
     return () => {
       if (editorView.current) {
-        editorView.current.destroy()
+        editorView.current.destroy();
       }
-    }
-  }, [initialContent, language, isApplyingRemoteChanges])
+
+      // Clean up any pending save timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [initialContent, language, isApplyingRemoteChanges]);
+
+  // Handle beforeunload event to warn user about unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasPendingChanges.current) {
+        // This will prompt "Are you sure you want to leave?"
+        e.preventDefault();
+        e.returnValue = '';
+
+        // Attempt a quick save
+        forceSave();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   // Connect to WAMP router
   useEffect(() => {
-    if (!userId || !documentId) return
+    if (!userId || !documentId) return;
 
     const connectToWamp = () => {
       const connection = new autobahn.Connection({
         url: process.env.NEXT_PUBLIC_WAMP_URL || 'ws://localhost:8080/ws',
         realm: process.env.NEXT_PUBLIC_WAMP_REALM || 'realm1'
-      })
+      });
 
       connection.onopen = async (session) => {
-        console.log('Connected to WAMP router')
-        wampSession.current = session
-        setIsConnected(true)
+        console.log('Connected to WAMP router');
+        wampSession.current = session;
+        setIsConnected(true);
+
+        // Fetch the latest document content first
+        await fetchDocumentContent();
 
         // Announce user presence
         session.publish('code.user.joined', [documentId, {
           id: userId,
           username: username
-        }])
+        }]);
 
         try {
           // Subscribe to document updates and store the subscription objects
           const docSubscription = await session.subscribe(
             `code.document.${documentId}.changed`,
             handleDocumentUpdate
-          )
+          );
 
           const cursorSubscription = await session.subscribe(
             `code.cursor.${documentId}.moved`,
             handleCursorUpdate
-          )
+          );
 
           const userJoinedSubscription = await session.subscribe(
             `code.user.joined`,
             handleUserJoined
-          )
+          );
 
           const userLeftSubscription = await session.subscribe(
             `code.user.left`,
             handleUserLeft
-          )
+          );
 
           // Store all subscription objects for cleanup
           subscriptions.current = [
@@ -170,11 +309,11 @@ const CollaborativeEditor = ({
             cursorSubscription,
             userJoinedSubscription,
             userLeftSubscription
-          ]
+          ];
 
           // Set up cursor activity tracking
           if (editorView.current) {
-            setupCursorTracking()
+            setupCursorTracking();
           }
 
           // Setup ping interval to keep connection alive
@@ -183,40 +322,45 @@ const CollaborativeEditor = ({
               session.publish('code.ping', [documentId, {
                 userId,
                 timestamp: Date.now()
-              }])
+              }]);
             }
-          }, 30000) // Every 30 seconds
+          }, 30000); // Every 30 seconds
 
-          return () => clearInterval(pingInterval)
+          return () => clearInterval(pingInterval);
         } catch (error) {
-          console.error("Error subscribing to topics:", error)
+          console.log("Error subscribing to topics:", error);
         }
-      }
+      };
 
       connection.onclose = (reason, details) => {
-        console.log('Connection closed:', reason, details)
-        setIsConnected(false)
+        console.log('Connection closed:', reason, details);
+        setIsConnected(false);
 
         // Notify other users that this user left
         if (wampSession.current && wampSession.current.isOpen) {
           wampSession.current.publish('code.user.left', [documentId, {
             id: userId,
             username: username
-          }])
+          }]);
         }
 
         // Clear subscriptions
-        subscriptions.current = []
+        subscriptions.current = [];
+
+        // Force save before disconnection
+        if (hasPendingChanges.current) {
+          forceSave();
+        }
 
         // Attempt reconnection
-        setTimeout(connectToWamp, 5000)
-      }
+        setTimeout(connectToWamp, 5000);
+      };
 
-      connection.open()
-      wampConnection.current = connection
-    }
+      connection.open();
+      wampConnection.current = connection;
+    };
 
-    connectToWamp()
+    connectToWamp();
 
     return () => {
       // Clean up subscriptions using the saved subscription objects
@@ -224,12 +368,17 @@ const CollaborativeEditor = ({
         subscriptions.current.forEach(subscription => {
           try {
             if (wampSession.current && wampSession.current.isOpen) {
-              wampSession.current.unsubscribe(subscription)
+              wampSession.current.unsubscribe(subscription);
             }
           } catch (error) {
-            console.error("Error unsubscribing:", error)
+            console.log("Error unsubscribing:", error);
           }
-        })
+        });
+      }
+
+      // Save any pending changes before unmounting
+      if (hasPendingChanges.current) {
+        forceSave();
       }
 
       // Notify about leaving
@@ -237,135 +386,257 @@ const CollaborativeEditor = ({
         wampSession.current.publish('code.user.left', [documentId, {
           id: userId,
           username: username
-        }])
+        }]);
       }
 
       if (wampConnection.current) {
-        wampConnection.current.close()
+        wampConnection.current.close();
       }
-    }
-  }, [documentId, userId, username])
+    };
+  }, [documentId, userId, username, token]);
+
+  // Auto-save document periodically
+  useEffect(() => {
+    if (!documentId || !isConnected || !token) return;
+
+    const saveInterval = setInterval(() => {
+      if (hasPendingChanges.current) {
+        saveDocumentToServer();
+      }
+    }, 10000); // Save every 10 seconds if there are changes
+
+    return () => clearInterval(saveInterval);
+  }, [documentId, isConnected, token]);
 
   // Setup cursor tracking extension
   const setupCursorTracking = () => {
     // This is a simplified version - in a real app you'd want to debounce this
-    editorView.current.dom.addEventListener('mouseup', handleCursorActivity)
-    editorView.current.dom.addEventListener('keyup', handleCursorActivity)
+    editorView.current.dom.addEventListener('mouseup', handleCursorActivity);
+    editorView.current.dom.addEventListener('keyup', handleCursorActivity);
 
     return () => {
-      editorView.current.dom.removeEventListener('mouseup', handleCursorActivity)
-      editorView.current.dom.removeEventListener('keyup', handleCursorActivity)
-    }
-  }
+      if (editorView.current) {
+        editorView.current.dom.removeEventListener('mouseup', handleCursorActivity);
+        editorView.current.dom.removeEventListener('keyup', handleCursorActivity);
+      }
+    };
+  };
 
   // Handle document updates from other users
   const handleDocumentUpdate = (args) => {
-    const [docId, changes, senderId] = args
-    if (docId !== documentId || senderId === userId || !editorView.current) return
+    const [docId, changes, senderId] = args;
+    if (docId !== documentId || senderId === userId || !editorView.current) return;
 
-    setIsApplyingRemoteChanges(true)
+    setIsApplyingRemoteChanges(true);
     try {
-      // Apply remote changes
-      // This is a simplified approach - in a real app, you'd need to transform the changes
-      // based on your specific change format
-      const transaction = editorView.current.state.update({
-        changes: {
-          from: changes.from || 0,
-          to: changes.to || 0,
-          insert: changes.text || ""
-        }
-      })
-      editorView.current.dispatch(transaction)
-      editorContentRef.current = editorView.current.state.doc.toString()
+      // Check if we receive a full text update or incremental changes
+      if (changes.fullText) {
+        // Full text update
+        const transaction = editorView.current.state.update({
+          changes: {
+            from: 0,
+            to: editorView.current.state.doc.length,
+            insert: changes.text || ""
+          }
+        });
+        editorView.current.dispatch(transaction);
+      } else if (changes.changes && Array.isArray(changes.changes)) {
+        // Apply each change in sequence
+        const changeSet = changes.changes.map(change => ({
+          from: change.from || 0,
+          to: change.to || 0,
+          insert: change.text || ""
+        }));
+
+        const transaction = editorView.current.state.update({
+          changes: changeSet
+        });
+        editorView.current.dispatch(transaction);
+      } else {
+        // Legacy format - single change
+        const transaction = editorView.current.state.update({
+          changes: {
+            from: changes.from || 0,
+            to: changes.to || 0,
+            insert: changes.text || ""
+          }
+        });
+        editorView.current.dispatch(transaction);
+      }
+
+      editorContentRef.current = editorView.current.state.doc.toString();
+      // Mark that we have changes to save
+      hasPendingChanges.current = true;
+      // Trigger debounced save
+      debouncedSave();
     } finally {
-      setIsApplyingRemoteChanges(false)
+      setIsApplyingRemoteChanges(false);
     }
-  }
+  };
 
   // Handle cursor updates from other users
   const handleCursorUpdate = (args) => {
-    const [docId, cursorPos, senderId, senderName] = args
-    if (docId !== documentId || senderId === userId || !editorView.current) return
+    const [docId, cursorPos, senderId, senderName] = args;
+    if (docId !== documentId || senderId === userId || !editorView.current) return;
 
     // This would need a proper implementation to show remote cursors
     // CodeMirror 6 requires an extension for this, simplified version shown here
-    console.log(`User ${senderName} moved cursor to position`, cursorPos)
-  }
+    console.log(`User ${senderName} moved cursor to position`, cursorPos);
+
+    // Track active users
+    activeUsers.current.add(senderId);
+
+    // In a full implementation, you'd add visual markers for other users' cursors
+  };
 
   // Handle user joined notifications
   const handleUserJoined = (args) => {
-    const [docId, user] = args
-    if (docId !== documentId || user.id === userId) return
+    const [docId, user] = args;
+    if (docId !== documentId || user.id === userId) return;
 
-    onUserJoined?.(user)
-  }
+    console.log(`User ${user.username} joined`);
+    activeUsers.current.add(user.id);
+    onUserJoined?.(user);
+
+    // When a user joins, broadcast the current document content to them
+    if (wampSession.current && isConnected) {
+      wampSession.current.publish(`code.document.${documentId}.changed`, [
+        documentId,
+        {
+          text: editorContentRef.current,
+          fullText: true
+        },
+        userId
+      ]);
+    }
+  };
 
   // Handle user left notifications
   const handleUserLeft = (args) => {
-    const [docId, user] = args
-    if (docId !== documentId || user.id === userId) return
+    const [docId, user] = args;
+    if (docId !== documentId || user.id === userId) return;
 
+    console.log(`User ${user.username} left`);
+    activeUsers.current.delete(user.id);
     // Remove their cursor marker if you implement them
-    onUserLeft?.(user)
-  }
+    onUserLeft?.(user);
+  };
 
   // Handle local editor changes
   const handleEditorChanges = (update) => {
-    if (isApplyingRemoteChanges || !wampSession.current || !isConnected) return
+    if (isApplyingRemoteChanges || !wampSession.current || !isConnected) return;
 
-    // Get the changes from the transaction
-    // This is simplified - in a production app, you'd want to send minimal diffs
-    const changes = {
-      text: update.state.doc.toString(),
-      from: 0,
-      to: 0
+    // Extract specific changes from the update
+    let changes = [];
+    update.changes.iterChanges((fromA, toA, fromB, toB, text) => {
+      changes.push({
+        from: fromA,
+        to: toA,
+        text: text.toString()
+      });
+    });
+
+    // Send changes to server if we have any
+    if (changes.length > 0) {
+      wampSession.current.publish(`code.document.${documentId}.changed`, [
+        documentId,
+        {
+          changes: changes
+        },
+        userId
+      ]);
     }
-
-    // Send changes to server
-    wampSession.current.publish(`code.document.${documentId}.changed`, [
-      documentId,
-      changes,
-      userId
-    ])
-  }
+  };
 
   // Handle local cursor movement
   const handleCursorActivity = () => {
-    if (!wampSession.current || !isConnected || !editorView.current) return
+    if (!wampSession.current || !isConnected || !editorView.current) return;
 
     // Get current cursor position
-    const cursorPos = editorView.current.state.selection.main.head
+    const cursorPos = editorView.current.state.selection.main.head;
 
     wampSession.current.publish(`code.cursor.${documentId}.moved`, [
       documentId,
       cursorPos,
       userId,
       username
-    ])
-  }
+    ]);
+  };
 
   // Helper function to generate color from user ID
   const stringToColor = (str) => {
-    let hash = 0
+    let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash)
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    let color = '#'
+    let color = '#';
     for (let i = 0; i < 3; i++) {
-      const value = (hash >> (i * 8)) & 0xFF
-      color += ('00' + value.toString(16)).substr(-2)
+      const value = (hash >> (i * 8)) & 0xFF;
+      color += ('00' + value.toString(16)).substr(-2);
     }
-    return color
-  }
+    return color;
+  };
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Save on Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveDocumentToServer();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   return (
     <div className="relative h-full w-full">
       <div ref={editorRef} className="h-full" />
 
-      {/* Connection status indicator */}
-      <div className={`absolute bottom-2 right-2 w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-    </div>
-  )
-}
+      {/* Status indicators and controls */}
+      <div className="absolute bottom-2 left-2 flex items-center space-x-4">
+        {/* Connection status indicator */}
+        <div className="flex items-center">
+          <div className={`w-3 h-3 rounded-full mr-1 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+        </div>
 
-export default CollaborativeEditor
+        {/* Save status indicator */}
+        <div className="flex items-center">
+          <span className={`text-xs ${isSaving ? 'text-amber-500' : (hasPendingChanges.current ? 'text-amber-500' : 'text-green-500')}`}>
+            {isSaving ? 'Saving...' : (hasPendingChanges.current ? 'Unsaved changes' : 'All changes saved')}
+          </span>
+        </div>
+
+        {/* Active users count */}
+        <div className="text-xs">
+          {activeUsers.current.size} other user(s) active
+        </div>
+      </div>
+
+      {/* Manual save button */}
+      <button
+        onClick={saveDocumentToServer}
+        disabled={isSaving || !hasPendingChanges.current}
+        className={`absolute top-2 right-2 py-1 px-3 text-sm rounded ${
+          isSaving || !hasPendingChanges.current 
+            ? 'bg-gray-300 cursor-not-allowed text-gray-500' 
+            : 'bg-blue-500 hover:bg-blue-600 text-white'
+        }`}
+      >
+        {isSaving ? 'Saving...' : 'Save'}
+      </button>
+
+      {/* Keyboard shortcut hint */}
+      <div className="absolute top-2 left-2 text-xs text-gray-500">
+        Press Ctrl+S / Cmd+S to save
+      </div>
+    </div>
+  );
+};
+
+export default CollaborativeEditor;

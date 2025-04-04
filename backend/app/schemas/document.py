@@ -1,22 +1,39 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+
 
 class DocumentBase(BaseModel):
     title: str
     language: str = "python"
-
-class DocumentCreate(DocumentBase):
     content: str = ""
 
+
+class DocumentCreate(DocumentBase):
+    pass
+
+
 class DocumentUpdate(BaseModel):
-    content: Optional[str] = None
     title: Optional[str] = None
+    content: Optional[str] = None
     language: Optional[str] = None
 
-class DocumentResponse(DocumentBase):
+
+class UserBase(BaseModel):
     id: int
-    content: str
-    owner_id: int
+    username: str
 
     class Config:
         from_attributes = True
+
+
+class DocumentResponse(DocumentBase):
+    id: int
+    owner_id: int
+    shared_with: List[UserBase] = []
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentShare(BaseModel):
+    username: str
