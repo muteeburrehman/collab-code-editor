@@ -13,6 +13,16 @@
               "name": "anonymous",
               "permissions": [
                 {
+                  "uri": "code.",
+                  "match": "prefix",
+                  "allow": {
+                    "publish": true,
+                    "subscribe": true,
+                    "call": true,
+                    "register": true
+                  }
+                },
+                {
                   "uri": "",
                   "allow": {
                     "publish": true,

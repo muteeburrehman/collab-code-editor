@@ -14,20 +14,16 @@ from ..config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+
 def hash_password(password: str) -> str:
-    """Hash the password using bcrypt"""
     return pwd_context.hash(password)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify that a plain password matches the hashed password"""
     return pwd_context.verify(plain_password, hashed_password)
 
 def authenticate_user(db: Session, username: str, password: str):
-    """Authenticate a user by username and password"""
     user = db.query(User).filter(User.username == username).first()
-    if not user:
-        return False
-    if not verify_password(password, user.hashed_password):
+    if not user or not verify_password(password, user.hashed_password):
         return False
     return user
 

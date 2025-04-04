@@ -9,4 +9,4 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
 
-    documents = relationship("Document", back_populates="user")
+    documents = relationship("Document", back_populates="owner")  # Changed to match Document model

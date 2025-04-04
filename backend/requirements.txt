@@ -10,3 +10,4 @@ dotenv
 bcrypt
 crossbar
 python-jose[cryptography]
+python-multipart
