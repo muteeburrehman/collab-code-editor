@@ -1,6 +1,10 @@
 # Ignore the virtual environment
 venv/
 
+backend/venv
+backend/key.priv
+backend/key.pub
+backend/node.pid
 # Python related
 __pycache__/
 *.py[cod]
