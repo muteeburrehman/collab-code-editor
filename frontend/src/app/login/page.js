@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
-
+import '@/styles/globals.css';
 // Ensure this matches your environment variable
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 

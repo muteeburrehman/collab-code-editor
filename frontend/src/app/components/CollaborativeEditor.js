@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import autobahn from 'autobahn-browser'
-
+import '@/styles/globals.css';
 // Import CodeMirror v6 modules
 import { EditorState } from '@codemirror/state'
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars } from '@codemirror/view'
@@ -21,6 +21,7 @@ import { php } from '@codemirror/lang-php'
 import { rust } from '@codemirror/lang-rust'
 import { html } from '@codemirror/lang-html'
 import { css } from '@codemirror/lang-css'
+import CollaboratorsList from "@/app/components/CollaboratorsList";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -49,6 +50,7 @@ const CollaborativeEditor = ({
   const lastSaved = useRef(Date.now())
   const hasPendingChanges = useRef(false)
   const saveTimeoutRef = useRef(null)
+  const [activeCollaborators, setActiveCollaborators] = useState([])
   const activeUsers = useRef(new Set())
 
   // Map language to CodeMirror language support
@@ -486,6 +488,14 @@ const CollaborativeEditor = ({
     // Track active users
     activeUsers.current.add(senderId);
 
+    // Update active collaborators state for UI display
+    const updatedCollaborators = Array.from(activeUsers.current).map(id => ({
+      id,
+      username: id === senderId ? senderName : "Unknown" // In a real app, you'd maintain a mapping
+    }));
+
+    setActiveCollaborators(updatedCollaborators);
+
     // In a full implementation, you'd add visual markers for other users' cursors
   };
 
@@ -496,6 +506,16 @@ const CollaborativeEditor = ({
 
     console.log(`User ${user.username} joined`);
     activeUsers.current.add(user.id);
+
+    // Update UI with new collaborator
+    setActiveCollaborators(prev => {
+      // Check if user already exists
+      if (!prev.some(u => u.id === user.id)) {
+        return [...prev, user];
+      }
+      return prev;
+    });
+
     onUserJoined?.(user);
 
     // When a user joins, broadcast the current document content to them
@@ -518,6 +538,10 @@ const CollaborativeEditor = ({
 
     console.log(`User ${user.username} left`);
     activeUsers.current.delete(user.id);
+
+    // Update UI by removing collaborator
+    setActiveCollaborators(prev => prev.filter(u => u.id !== user.id));
+
     // Remove their cursor marker if you implement them
     onUserLeft?.(user);
   };
@@ -597,24 +621,41 @@ const CollaborativeEditor = ({
     <div className="relative h-full w-full">
       <div ref={editorRef} className="h-full" />
 
-      {/* Status indicators and controls */}
-      <div className="absolute bottom-2 left-2 flex items-center space-x-4">
-        {/* Connection status indicator */}
-        <div className="flex items-center">
-          <div className={`w-3 h-3 rounded-full mr-1 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className="text-xs">{isConnected ? 'Connected' : 'Disconnected'}</span>
+      {/* Status bar at the bottom */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
+        {/* Left side: connection and save status */}
+        <div className="flex items-center space-x-4">
+          {/* Connection status indicator */}
+          <div className="flex items-center">
+            <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+            <span className="text-xs text-gray-700">{isConnected ? 'Connected' : 'Disconnected'}</span>
+          </div>
+
+          {/* Save status indicator */}
+          <div className="flex items-center">
+            <span className={`text-xs ${
+              isSaving ? 'text-amber-600' : 
+              (hasPendingChanges.current ? 'text-amber-600' : 'text-emerald-600')
+            }`}>
+              {isSaving ? 'Saving...' : (hasPendingChanges.current ? 'Unsaved changes' : 'All changes saved')}
+            </span>
+          </div>
         </div>
 
-        {/* Save status indicator */}
-        <div className="flex items-center">
-          <span className={`text-xs ${isSaving ? 'text-amber-500' : (hasPendingChanges.current ? 'text-amber-500' : 'text-green-500')}`}>
-            {isSaving ? 'Saving...' : (hasPendingChanges.current ? 'Unsaved changes' : 'All changes saved')}
-          </span>
-        </div>
+        {/* Right side: active users count and collaborators list */}
+        <div className="flex items-center space-x-4">
+          {/* Active users count */}
+          <div className="text-xs text-gray-700">
+            {activeCollaborators.length} other user(s) active
+          </div>
 
-        {/* Active users count */}
-        <div className="text-xs">
-          {activeUsers.current.size} other user(s) active
+          {/* Display collaborators avatars if any */}
+          {activeCollaborators.length > 0 && (
+            <CollaboratorsList
+              collaborators={activeCollaborators}
+              currentUserId={userId}
+            />
+          )}
         </div>
       </div>
 
@@ -625,16 +666,13 @@ const CollaborativeEditor = ({
         className={`absolute top-2 right-2 py-1 px-3 text-sm rounded ${
           isSaving || !hasPendingChanges.current 
             ? 'bg-gray-300 cursor-not-allowed text-gray-500' 
-            : 'bg-blue-500 hover:bg-blue-600 text-white'
+            :  'bg-indigo-500 hover:bg-indigo-600 text-white transition-colors duration-200'
         }`}
       >
         {isSaving ? 'Saving...' : 'Save'}
       </button>
 
-      {/* Keyboard shortcut hint */}
-      <div className="absolute top-2 left-2 text-xs text-gray-500">
-        Press Ctrl+S / Cmd+S to save
-      </div>
+
     </div>
   );
 };

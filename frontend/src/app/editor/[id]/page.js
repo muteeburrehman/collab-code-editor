@@ -1,12 +1,11 @@
-// app/editor/[id]/page.js
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
-
 import { useRouter } from 'next/navigation'
-import CollaborativeEditor from "@/app/components/CollaborativeEditor";
+import CollaborativeEditor from "@/app/components/CollaborativeEditor"
+import ShareDocumentModal from '@/app/components/ShareDocumentModal' // Import the ShareDocumentModal
 
 export default function EditorPage() {
   const { id } = useParams()
@@ -14,6 +13,7 @@ export default function EditorPage() {
   const [document, setDocument] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false) // State for modal visibility
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -92,6 +92,12 @@ export default function EditorPage() {
         <div className="flex items-center space-x-4">
           <span>Language: {document.language}</span>
           <button
+            onClick={() => setIsShareModalOpen(true)} // Open share modal
+            className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 text-sm rounded"
+          >
+            Share
+          </button>
+          <button
             onClick={() => router.push('/')}
             className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded"
           >
@@ -112,6 +118,18 @@ export default function EditorPage() {
           onUserLeft={handleUserLeft}
         />
       </div>
+
+      {/* Add the ShareDocumentModal */}
+      <ShareDocumentModal
+        documentId={id}
+        token={token}
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        onShare={() => {
+          // You could refresh collaborator list here if needed
+          setIsShareModalOpen(false)
+        }}
+      />
     </div>
   )
 }

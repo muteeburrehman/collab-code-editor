@@ -12,15 +12,25 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Check for stored auth data
-    const storedUser = localStorage.getItem('user')
-    const storedToken = localStorage.getItem('token')
+    if (typeof window !== 'undefined') {
+      // Only run in browser environment
+      const storedUser = localStorage.getItem('user')
+      const storedToken = localStorage.getItem('token')
 
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser))
-      setToken(storedToken)
+      if (storedUser && storedToken) {
+        try {
+          setUser(JSON.parse(storedUser))
+          setToken(storedToken)
+        } catch (error) {
+          // Handle potential JSON parse error
+          console.error('Error parsing stored user data:', error)
+          localStorage.removeItem('user')
+          localStorage.removeItem('token')
+        }
+      }
+
+      setLoading(false)
     }
-
-    setLoading(false)
   }, [])
 
   const login = (userData, authToken) => {
@@ -30,19 +40,19 @@ export function AuthProvider({ children }) {
     localStorage.setItem('token', authToken)
   }
 
-// Enhanced logout function for AuthContext.js
-const logout = () => {
-  setUser(null)
-  setToken(null)
-  localStorage.removeItem('user')
-  localStorage.removeItem('token')
+  const logout = () => {
+    setUser(null)
+    setToken(null)
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
 
-  // Clear any other potential stored data
-  sessionStorage.clear() // Clear session storage too if you're using it
+    // Clear any other potential stored data
+    sessionStorage.clear() // Clear session storage too if you're using it
 
-  // You could also add this if needed
-  window.location.href = '/login' // Force a full page reload to clear any in-memory state
-}
+    // You could also add this if needed
+    // window.location.href = '/login' // Force a full page reload to clear any in-memory state
+  }
+
   // Add this computed property
   const isAuthenticated = !!user && !!token
 

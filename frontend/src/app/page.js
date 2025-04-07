@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from './contexts/AuthContext'
 import Link from 'next/link'
+import CollaboratorsList from "@/app/components/CollaboratorsList";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export default function Home() {
@@ -25,12 +26,12 @@ export default function Home() {
   
   const fetchDocuments = async () => {
     try {
-      const response = await fetch(`${API_URL }/documents`, {
+      const response = await fetch(`${API_URL}/documents`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         const data = await response.json()
         setDocuments(data)
@@ -43,14 +44,14 @@ export default function Home() {
       setIsLoading(false)
     }
   }
-  
+
   const createDocument = async (e) => {
     e.preventDefault()
-    
+
     if (!title.trim()) return
-    
+
     try {
-      const response = await fetch(`${API_URL }/documents`, {
+      const response = await fetch(`${API_URL}/documents`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +63,7 @@ export default function Home() {
           content: ''
         })
       })
-      
+
       if (response.ok) {
         const newDocument = await response.json()
         setDocuments([...documents, newDocument])
@@ -73,16 +74,16 @@ export default function Home() {
       console.log('Error creating document:', error)
     }
   }
-  
+
   const deleteDocument = async (id) => {
     try {
-      const response = await fetch(`${API_URL }/documents/${id}`, {
+      const response = await fetch(`${API_URL}/documents/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
-      
+
       if (response.ok) {
         setDocuments(documents.filter(doc => doc.id !== id))
       }
@@ -90,7 +91,7 @@ export default function Home() {
       console.log('Error deleting document:', error)
     }
   }
-  
+
   const languageOptions = [
     { value: 'javascript', label: 'JavaScript' },
     { value: 'python', label: 'Python' },
@@ -103,7 +104,7 @@ export default function Home() {
     { value: 'html', label: 'HTML' },
     { value: 'css', label: 'CSS' }
   ]
-  
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -111,14 +112,14 @@ export default function Home() {
       </div>
     )
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Collaborative Code Editor</h1>
         <div className="flex items-center">
           <span className="mr-4">Welcome, {user?.username}</span>
-          <button 
+          <button
             onClick={() => router.push('/logout')}
             className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded"
           >
@@ -126,7 +127,7 @@ export default function Home() {
           </button>
         </div>
       </div>
-    
+
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Create New Document</h2>
         <form onSubmit={createDocument} className="flex flex-col md:flex-row gap-4">
@@ -149,7 +150,7 @@ export default function Home() {
               </option>
             ))}
           </select>
-          <button 
+          <button
             type="submit"
             className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded"
           >
@@ -157,7 +158,7 @@ export default function Home() {
           </button>
         </form>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow">
         <h2 className="text-xl font-semibold p-6 border-b">Your Documents</h2>
         {documents.length === 0 ? (
@@ -175,12 +176,17 @@ export default function Home() {
                   <p className="text-sm text-gray-500">Language: {doc.language}</p>
                 </div>
                 <div className="flex space-x-2">
-                  <Link 
+                  <Link
                     href={`/editor/${doc.id}`}
                     className="bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 text-sm rounded"
                   >
                     Edit
                   </Link>
+                  {/* Pass shared_with data if available, otherwise empty array */}
+                  <CollaboratorsList
+                    collaborators={doc.shared_with || []}
+                    currentUserId={user?.id}
+                  />
                   <button
                     onClick={() => deleteDocument(doc.id)}
                     className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 text-sm rounded"

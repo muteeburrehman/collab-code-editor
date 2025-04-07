@@ -11,12 +11,15 @@ app = FastAPI(title="Code Sharing API")
 # Configure CORS
 origins = ["http://localhost:3000"]
 
+# In your main.py file
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Don't use "*" here with credentials
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["*"],  # Allow all methods including OPTIONS
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers to the browser
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 app.include_router(user.router)
 app.include_router(document.router)
