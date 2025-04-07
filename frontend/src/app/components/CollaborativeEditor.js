@@ -618,62 +618,61 @@ const CollaborativeEditor = ({
   }, []);
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={editorRef} className="h-full" />
+ <div className="relative h-full w-full bg-[#1e1e2f] text-gray-300">
+  <div ref={editorRef} className="h-full" />
 
-      {/* Status bar at the bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gray-100 border-t border-gray-200 px-3 py-2 flex items-center justify-between">
-        {/* Left side: connection and save status */}
-        <div className="flex items-center space-x-4">
-          {/* Connection status indicator */}
-          <div className="flex items-center">
-            <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-            <span className="text-xs text-gray-700">{isConnected ? 'Connected' : 'Disconnected'}</span>
-          </div>
-
-          {/* Save status indicator */}
-          <div className="flex items-center">
-            <span className={`text-xs ${
-              isSaving ? 'text-amber-600' : 
-              (hasPendingChanges.current ? 'text-amber-600' : 'text-emerald-600')
-            }`}>
-              {isSaving ? 'Saving...' : (hasPendingChanges.current ? 'Unsaved changes' : 'All changes saved')}
-            </span>
-          </div>
-        </div>
-
-        {/* Right side: active users count and collaborators list */}
-        <div className="flex items-center space-x-4">
-          {/* Active users count */}
-          <div className="text-xs text-gray-700">
-            {activeCollaborators.length} other user(s) active
-          </div>
-
-          {/* Display collaborators avatars if any */}
-          {activeCollaborators.length > 0 && (
-            <CollaboratorsList
-              collaborators={activeCollaborators}
-              currentUserId={userId}
-            />
-          )}
-        </div>
+  {/* Bottom status bar */}
+  <div className="absolute bottom-0 left-0 right-0 bg-[#2a2a40] border-t border-[#3a3a55] px-4 py-2 flex items-center justify-between text-sm">
+    {/* Left: connection + save status */}
+    <div className="flex items-center space-x-6">
+      {/* Connection status */}
+      <div className="flex items-center">
+        <div className={`w-3 h-3 rounded-full mr-2 ${isConnected ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+        <span className="text-sm">{isConnected ? 'Connected' : 'Disconnected'}</span>
       </div>
 
-      {/* Manual save button */}
-      <button
-        onClick={saveDocumentToServer}
-        disabled={isSaving || !hasPendingChanges.current}
-        className={`absolute top-2 right-2 py-1 px-3 text-sm rounded ${
-          isSaving || !hasPendingChanges.current 
-            ? 'bg-gray-300 cursor-not-allowed text-gray-500' 
-            :  'bg-indigo-500 hover:bg-indigo-600 text-white transition-colors duration-200'
-        }`}
-      >
-        {isSaving ? 'Saving...' : 'Save'}
-      </button>
-
-
+      {/* Save status */}
+      <div className="flex items-center">
+        <span className={`font-medium ${
+          isSaving
+            ? 'text-amber-400'
+            : hasPendingChanges.current
+              ? 'text-amber-400'
+              : 'text-emerald-400'
+        }`}>
+          {isSaving ? 'Saving...' : hasPendingChanges.current ? 'Unsaved changes' : 'All changes saved'}
+        </span>
+      </div>
     </div>
+
+    {/* Right: active users + avatars */}
+    <div className="flex items-center space-x-4">
+      <span className="text-sm text-gray-400">
+        {activeCollaborators.length} other user(s) active
+      </span>
+      {activeCollaborators.length > 0 && (
+        <CollaboratorsList
+          collaborators={activeCollaborators}
+          currentUserId={userId}
+        />
+      )}
+    </div>
+  </div>
+
+  {/* Floating Save Button */}
+  {/*<button*/}
+  {/*  onClick={saveDocumentToServer}*/}
+  {/*  disabled={isSaving || !hasPendingChanges.current}*/}
+  {/*  className={`absolute top-3 right-3 py-1.5 px-4 text-sm font-semibold rounded-md transition duration-200 shadow-md ${*/}
+  {/*    isSaving || !hasPendingChanges.current*/}
+  {/*      ? 'bg-gray-600 text-gray-400 cursor-not-allowed'*/}
+  {/*      : 'bg-indigo-600 text-white hover:bg-indigo-500'*/}
+  {/*  }`}*/}
+  {/*>*/}
+  {/*  {isSaving ? 'Saving...' : 'Save'}*/}
+  {/*</button>*/}
+</div>
+
   );
 };
 

@@ -85,51 +85,49 @@ export default function EditorPage() {
     )
   }
 
-  return (
-    <div className="h-screen flex flex-col">
-      <header className="bg-white shadow py-4 px-6 flex justify-between items-center">
-        <h1 className="text-xl font-semibold">{document.title}</h1>
-        <div className="flex items-center space-x-4">
-          <span>Language: {document.language}</span>
-          <button
-            onClick={() => setIsShareModalOpen(true)} // Open share modal
-            className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 text-sm rounded"
-          >
-            Share
-          </button>
-          <button
-            onClick={() => router.push('/')}
-            className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded"
-          >
-            Back to Dashboard
-          </button>
-        </div>
-      </header>
+return (
+  <div className="h-screen flex flex-col bg-[#1e1e2f] text-gray-200">
+    <header className="bg-[#2a2a40] border-b border-[#3a3a55] py-4 px-6 flex justify-between items-center">
+      <h1 className="text-xl font-bold text-white">{document.title}</h1>
+      <div className="flex items-center space-x-4 text-sm">
+        <span className="text-gray-400">Language: {document.language}</span>
 
-      <div className="flex-grow">
-        <CollaborativeEditor
-          documentId={id}
-          initialContent={document.content || ''}
-          language={document.language || 'javascript'}
-          userId={user?.id}
-          username={user?.username}
-          token={token}
-          onUserJoined={handleUserJoined}
-          onUserLeft={handleUserLeft}
-        />
+        <button
+          onClick={() => setIsShareModalOpen(true)}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white py-1 px-3 rounded shadow-sm transition"
+        >
+          Share
+        </button>
+
+        <button
+          onClick={() => router.push('/')}
+          className="bg-gray-700 hover:bg-gray-600 text-gray-100 py-1.5 px-4 rounded shadow-sm transition"
+        >
+          Back to Dashboard
+        </button>
       </div>
+    </header>
 
-      {/* Add the ShareDocumentModal */}
-      <ShareDocumentModal
+    <div className="flex-grow overflow-hidden">
+      <CollaborativeEditor
         documentId={id}
+        initialContent={document.content || ''}
+        language={document.language || 'javascript'}
+        userId={user?.id}
+        username={user?.username}
         token={token}
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        onShare={() => {
-          // You could refresh collaborator list here if needed
-          setIsShareModalOpen(false)
-        }}
+        onUserJoined={handleUserJoined}
+        onUserLeft={handleUserLeft}
       />
     </div>
-  )
+
+    <ShareDocumentModal
+      documentId={id}
+      token={token}
+      isOpen={isShareModalOpen}
+      onClose={() => setIsShareModalOpen(false)}
+      onShare={() => setIsShareModalOpen(false)}
+    />
+  </div>
+)
 }

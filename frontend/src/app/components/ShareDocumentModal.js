@@ -1,4 +1,3 @@
-// components/ShareDocumentModal.jsx
 'use client'
 
 import { useState } from 'react'
@@ -45,43 +44,45 @@ export default function ShareDocumentModal({ documentId, token, isOpen, onClose,
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-full">
-        <h2 className="text-xl font-semibold mb-4">Share Document</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+      <div className="bg-[#2a2a40] text-gray-200 rounded-xl w-full max-w-md p-6 shadow-xl">
+        <h2 className="text-xl font-semibold mb-4 text-white">🔗 Share Document</h2>
 
         <form onSubmit={handleShare}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username to share with"
-              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="Enter username"
+              className="w-full bg-[#1e1e2f] border border-gray-600 text-white rounded px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               required
             />
           </div>
 
           {error && (
-            <div className="mb-4 text-red-500 text-sm">{error}</div>
+            <div className="mb-3 text-red-400 text-sm">{error}</div>
           )}
 
           {success && (
-            <div className="mb-4 text-green-500 text-sm">Document shared successfully!</div>
+            <div className="mb-3 text-emerald-400 text-sm">Document shared successfully!</div>
           )}
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 px-4 rounded"
+              className="bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded"
+              className={`${
+                isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'
+              } text-white px-4 py-2 rounded transition`}
             >
               {isLoading ? 'Sharing...' : 'Share'}
             </button>
