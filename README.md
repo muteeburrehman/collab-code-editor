@@ -7,6 +7,10 @@
 
 ---
 ![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/299cb139139ccccc70abdb9453db2b9415de7d43/Screenshot%20from%202025-04-08%2016-27-22.png)
+![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/9fdf503f480516d43bad80985a9ef38ede18f4e3/Screenshot%20from%202025-04-08%2016-27-35.png)
+![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/9fdf503f480516d43bad80985a9ef38ede18f4e3/Screenshot%20from%202025-04-08%2017-06-19.png)
+![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/9fdf503f480516d43bad80985a9ef38ede18f4e3/Screenshot%20from%202025-04-08%2017-03-25.png)
+![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/9fdf503f480516d43bad80985a9ef38ede18f4e3/Screenshot%20from%202025-04-08%2017-03-10.png)
 ## 🛠️ Technologies Used
 
 - **Frontend:** Next.js (React)
