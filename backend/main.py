@@ -1,6 +1,7 @@
+import uvicorn
 from fastapi import FastAPI
-from .db import Base, engine
-from .routers import user, document, login
+from app.db import Base, engine
+from app.routers import user, document, login
 from fastapi.middleware.cors import CORSMiddleware
 
 # Creating all database tables
@@ -28,3 +29,9 @@ app.include_router(login.router)
 @app.get("/")
 async def root():
     return {"message": "Welcome to the FastAPI + WAMP Backend!"}
+
+def main():
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+
+if __name__ == "__main__":
+    main()

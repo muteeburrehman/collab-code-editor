@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db  # Relative import
 from ..models.user import User  # Relative import
-from ..schemas.code import UserResponse, UserCreate  # Relative import
+from ..schemas.user import UserResponse, UserCreate  # Relative import
 from ..services.auth import hash_password  # Relative import
 
 router = APIRouter(prefix="/users", tags=["users"])

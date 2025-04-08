@@ -1,4 +1,3 @@
-import asyncio
 from autobahn.asyncio.wamp import ApplicationRunner, ApplicationSession
 from autobahn.wamp.types import SubscribeOptions
 from .config import WAMP_URL, WAMP_REALM
