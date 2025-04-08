@@ -6,7 +6,7 @@
 > ✨ This project is built as a learning tool to understand how real-time collaborative systems can be architected using WAMP and modern full-stack technologies.
 
 ---
-
+![Screenshot](https://github.com/muteeburrehman/collab-code-editor/blob/299cb139139ccccc70abdb9453db2b9415de7d43/Screenshot%20from%202025-04-08%2016-27-22.png)
 ## 🛠️ Technologies Used
 
 - **Frontend:** Next.js (React)
