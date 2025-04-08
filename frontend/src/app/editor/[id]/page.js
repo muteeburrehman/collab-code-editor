@@ -5,7 +5,10 @@ import { useParams } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import CollaborativeEditor from "@/app/components/CollaborativeEditor"
-import ShareDocumentModal from '@/app/components/ShareDocumentModal' // Import the ShareDocumentModal
+import ShareDocumentModal from '@/app/components/ShareDocumentModal'
+import ProtectedRoute from "@/app/components/ProtectedRoute";
+
+
 
 export default function EditorPage() {
   const { id } = useParams()
@@ -86,6 +89,7 @@ export default function EditorPage() {
   }
 
 return (
+    <ProtectedRoute>
   <div className="h-screen flex flex-col bg-[#1e1e2f] text-gray-200">
     <header className="bg-[#2a2a40] border-b border-[#3a3a55] py-4 px-6 flex justify-between items-center">
       <h1 className="text-xl font-bold text-white">{document.title}</h1>
@@ -129,5 +133,6 @@ return (
       onShare={() => setIsShareModalOpen(false)}
     />
   </div>
+    </ProtectedRoute>
 )
 }
